@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=1920, height=1080" />
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+<style>
+  /* ---- EDIT: palette + type ------------------------------------------------ */
+  @font-face { font-family: "Anton"; src: url("assets/fonts/Anton-Regular.ttf"); font-weight: 400; }
+  @font-face { font-family: "Inter"; src: url("assets/fonts/Inter.ttf"); font-weight: 100 900; }
+  :root {
+    --bg: #0a0a0b;        /* backdrop after the cut */
+    --ink: #f5f1ea;       /* headline + supporting line */
+    --accent: #ff6b2b;    /* accent word + rule */
+    --headline-size: 400px;
+  }
+  /* -------------------------------------------------------------------------- */
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1920px; height: 1080px; overflow: hidden; background: var(--bg); }
+  #root { position: relative; width: 100%; height: 100%; overflow: hidden; background: var(--bg); }
+  .fill { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .glow { background: radial-gradient(ellipse 60% 55% at 50% 42%, rgba(255,107,43,.16), rgba(10,10,11,0) 70%); }
+  video.fill { object-fit: cover; }
+  .scrim { background: rgba(10,10,11,.58); }
+
+  /* headline: one element, never re-created, never re-scaled after the punch-in */
+  #headline {
+    position: absolute; left: 0; right: 0; top: 140px;
+    display: flex; flex-direction: column; align-items: center;
+    font-family: "Anton", sans-serif; font-weight: 400;
+    font-size: var(--headline-size); line-height: .9; letter-spacing: -0.005em;
+    color: var(--ink); text-transform: uppercase; white-space: nowrap;
+  }
+  #headline .ln { display: block; will-change: transform, opacity; }
+  #headline .acc { color: var(--accent); }
+
+  #support {
+    position: absolute; left: 0; right: 0; top: 880px;
+    display: flex; flex-direction: column; align-items: center; gap: 22px;
+  }
+  #support .rule { width: 160px; height: 8px; border-radius: 4px; background: var(--accent); transform-origin: center; }
+  #support .txt {
+    font-family: "Inter", sans-serif; font-weight: 600; font-size: 60px; letter-spacing: -0.02em;
+    color: var(--ink); white-space: nowrap;
+  }
+  #brand { position: absolute; left: 72px; top: 56px; display: flex; align-items: center; gap: 16px; }
+  #brand img { width: 56px; height: 56px; border-radius: 12px; }
+  #brand span { font-family: "Inter", sans-serif; font-weight: 700; font-size: 30px; color: var(--ink); letter-spacing: -0.02em; }
+</style>
+</head>
+<body>
+<div id="root" data-composition-id="title-takeover" data-start="0" data-duration="6" data-width="1920" data-height="1080">
+
+  <!-- backdrop (visible alone after the cut) -->
+  <div class="fill" style="background:var(--bg)"></div>
+  <div class="fill glow"></div>
+
+  <!-- A: presenter footage (ends on the cut) -->
+  <video id="presenter" class="clip fill" src="assets/presenter.mp4" muted playsinline
+         data-start="0" data-duration="3.4" data-track-index="1"></video>
+  <div id="scrim" class="clip fill scrim" data-start="0" data-duration="3.4" data-track-index="2"></div>
+
+  <!-- B: headline (spans the whole film; sits behind the cutout) -->
+  <div id="headline" data-layout-allow-occlusion>
+    <span class="ln" id="ln1" data-layout-allow-occlusion>ADOPT <span class="acc" data-layout-allow-occlusion>AI</span></span>
+    <span class="ln" id="ln2" data-layout-allow-occlusion>SKILLS</span>
+  </div>
+
+  <!-- C: background-removed presenter, on top of the headline (ends on the same frame as A) -->
+  <video id="cutout" data-layout-allow-occlusion class="clip fill" src="assets/presenter-cutout.webm" muted playsinline
+         data-start="0" data-duration="3.4" data-track-index="4"></video>
+
+  <!-- D: supporting line, after the cut -->
+  <div id="support">
+    <div class="rule" id="rule"></div>
+    <div class="txt" id="txt">Build, share and adopt skills across your team</div>
+  </div>
+
+  <div id="brand">
+    <img src="assets/logo.png" alt="" /><span>Skills Dojo</span>
+  </div>
+
+  <script>
+    const tl = gsap.timeline({ paused: true });
+    // TIMING (seconds): punch-in 0.30-0.80 | hard cut at 3.40 | support 3.75-4.30 | hold to 6.00
+    tl.fromTo("#ln1", { scale: 1.4, opacity: 0, transformOrigin: "50% 50%" },
+                      { scale: 1, opacity: 1, duration: 0.45, ease: "expo.out" }, 0.30);
+    tl.fromTo("#ln2", { scale: 1.4, opacity: 0, transformOrigin: "50% 50%" },
+                      { scale: 1, opacity: 1, duration: 0.45, ease: "expo.out" }, 0.45);
+    tl.fromTo("#brand", { opacity: 0 }, { opacity: 1, duration: 0.4, ease: "power2.out" }, 0.1);
+    tl.fromTo("#txt", { y: 28, opacity: 0 }, { y: 0, opacity: 1, duration: 0.55, ease: "power3.out" }, 3.75);
+    tl.fromTo("#rule", { scaleX: 0 }, { scaleX: 1, duration: 0.5, ease: "power3.out" }, 3.75);
+    window.__timelines = window.__timelines || {};
+    window.__timelines["title-takeover"] = tl;
+  </script>
+</div>
+</body>
+</html>

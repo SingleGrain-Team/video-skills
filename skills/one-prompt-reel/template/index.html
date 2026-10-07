@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1920, height=1080">
+<title>one-prompt-reel</title>
+<script src="assets/gsap.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: #0a0a0b; margin:0; }
+  #root { position: relative; width: 100%; height: 100%; overflow: hidden; background: #f4f1ea;
+          font-family: system-ui, -apple-system, "Helvetica Neue", sans-serif; }
+  .mono { font-family: "JetBrains Mono", ui-monospace, Menlo, monospace; }
+  .abs { position: absolute; }
+  .stage { position: absolute; inset: 0; background: radial-gradient(1200px 700px at 50% 45%, #fbfaf6, #e9e4d9); }
+
+  /* every surface is centred by flex wrapper so GSAP owns transform of the inner node */
+  .slot { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; opacity: 0; }
+  .surf { position: relative; }
+  .caret { display: inline-block; width: 0.55em; height: 1.1em; vertical-align: -0.18em; margin-left: 2px; background: currentColor; }
+  .label { position: absolute; left: 0; right: 0; bottom: 54px; text-align: center; font-size: 22px; letter-spacing: 0.22em;
+           text-transform: uppercase; color: #5a554c; opacity: 0; }
+  .label b { color: #b8400d; font-weight: 700; }
+
+  /* 1: terminal (wide, dark, sharp) */
+  .s-term { width: 1380px; height: 440px; background: #101012; border-radius: 14px; box-shadow: 0 40px 90px rgba(0,0,0,.35); color: #f2eee6; overflow: hidden; }
+  .s-term .bar { height: 54px; background: #1b1b1f; display: flex; align-items: center; padding: 0 22px; gap: 10px; color: #a8a49b; font-size: 18px; }
+  .s-term .dot { width: 14px; height: 14px; border-radius: 50%; background: #3a3a40; }
+  .s-term .body { padding: 36px 44px; font-size: 40px; line-height: 1.6; }
+  .s-term .dim { color: #6d695f; font-size: 28px; }
+  .s-term .ok { color: #ff6b2b; }
+
+  /* 2: chat (tall, rounded, light) */
+  .s-chat { width: 780px; height: 820px; background: #ffffff; border-radius: 56px; box-shadow: 0 40px 90px rgba(60,40,20,.22); overflow: hidden; color: #1c1b19; }
+  .s-chat .head { height: 110px; display: flex; align-items: center; justify-content: center; font-size: 26px; font-weight: 600; border-bottom: 1px solid #ecebe6; gap: 14px; }
+  .s-chat .av { width: 38px; height: 38px; border-radius: 50%; background: linear-gradient(135deg,#ff9a5a,#ff6b2b); }
+  .s-chat .msgs { padding: 36px; display: flex; flex-direction: column; gap: 18px; font-size: 26px; }
+  .s-chat .bub { background: #efece6; padding: 20px 26px; border-radius: 28px 28px 28px 8px; max-width: 560px; color: #5f5b54; }
+  .s-chat .inp { position: absolute; left: 30px; right: 30px; bottom: 34px; height: 104px; border-radius: 52px; border: 2px solid #e5e2da; display: flex; align-items: center; padding: 0 22px 0 34px; font-size: 22px; white-space: nowrap; }
+  .s-chat .send { margin-left: auto; width: 68px; height: 68px; border-radius: 50%; background: #1c1b19; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 32px; }
+
+  /* 3: command palette (floating pill over a gradient wallpaper) */
+  .s-pal { width: 1500px; height: 760px; border-radius: 44px; background: linear-gradient(135deg,#ffb38a 0%,#ff6b2b 40%,#7a3cff 100%); display:flex; align-items:flex-start; justify-content:center; padding-top: 110px; box-shadow: 0 40px 90px rgba(80,30,10,.35); }
+  .s-pal .box { width: 1220px; background: rgba(255,255,255,.92); border-radius: 30px; box-shadow: 0 30px 70px rgba(0,0,0,.28); overflow: hidden; color: #1c1b19; }
+  .s-pal .q { height: 130px; display: flex; align-items: center; padding: 0 40px; gap: 26px; font-size: 38px; border-bottom: 1px solid #e3dfd6; }
+  .s-pal .mag { width: 34px; height: 34px; border: 5px solid #8b857a; border-radius: 50%; position: relative; flex: none; }
+  .s-pal .mag::after { content:""; position:absolute; width: 5px; height: 16px; background:#8b857a; right:-9px; bottom:-14px; transform: rotate(-45deg); }
+  .s-pal .row { height: 84px; display: flex; align-items: center; padding: 0 40px; font-size: 26px; color: #8b857a; gap: 20px; }
+  .s-pal .row i { width: 30px; height: 30px; border-radius: 8px; background: #ddd8cc; display: block; }
+  .s-pal .row.hot { background: #fff1e8; color: #1c1b19; }
+  .s-pal .row.hot i { background: #ff6b2b; }
+
+  /* 4: editor with side tree and a notebook cell (square-ish, dark blue) */
+  .s-ed { width: 1500px; height: 760px; background: #1a2030; border-radius: 22px; display: flex; overflow: hidden; box-shadow: 0 40px 90px rgba(10,20,50,.4); color: #dfe6f5; }
+  .s-ed .tree { width: 280px; background: #141926; padding: 30px 26px; font-size: 22px; color: #6f7b96; line-height: 2; }
+  .s-ed .main { flex: 1; }
+  .s-ed .tabs { height: 60px; background: #141926; display: flex; align-items: flex-end; padding-left: 14px; }
+  .s-ed .tab { padding: 16px 30px; background: #1a2030; font-size: 20px; color: #9fb0d8; border-radius: 10px 10px 0 0; }
+  .s-ed .code { padding: 36px 40px; font-size: 28px; line-height: 1.9; color: #6f7b96; }
+  .s-ed .cell { margin-top: 24px; border: 2px solid #3b5bdb; border-radius: 14px; padding: 28px 30px; font-size: 34px; color: #f2f5ff; background: #1f2740; }
+  .s-ed .cell small { display:block; font-size: 18px; letter-spacing: .2em; color: #7f9bff; margin-bottom: 14px; }
+
+  .kbd { position: absolute; right: 70px; bottom: 56px; padding: 10px 22px; border-radius: 12px; font-size: 24px; font-weight: 700; opacity: 0; background:#ff6b2b; color:#fff; }
+
+  /* reel */
+  #reel { position: absolute; inset: 0; background: #0a0a0b; opacity: 0; overflow: hidden; }
+  .cut { position: absolute; inset: 0; opacity: 0; overflow: hidden; }
+  .cut img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .pillbar { position: absolute; left: 60px; bottom: 54px; background: rgba(10,10,11,.88); color: #f5f1ea; border: 2px solid #ff6b2b; border-radius: 999px; padding: 16px 34px; font-size: 28px; }
+  .pillbar b { color: #ff6b2b; font-weight: 600; }
+  .tick { position: absolute; right: 60px; bottom: 60px; font-size: 24px; color: #fff; background: rgba(10,10,11,.7); border-radius: 999px; padding: 10px 22px; letter-spacing: .12em; }
+  .flash { position: absolute; inset: 0; background: #fff; opacity: 0; }
+
+  /* close */
+  #close { position: absolute; inset: 0; background: radial-gradient(1100px 700px at 50% 40%, #1d1410, #0a0a0b 70%); opacity: 0; color: #f5f1ea; }
+  #close .col { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 36px; }
+  #close .logo { width: 150px; height: 150px; }
+  #close h1 { font-size: 92px; letter-spacing: -0.03em; font-weight: 700; }
+  #close .tag { font-size: 30px; color: #a8a49b; margin-top: -10px; }
+  #close .cmd { font-size: 54px; padding: 30px 56px; border: 3px solid #ff6b2b; border-radius: 22px; background: #14100d; box-shadow: 0 0 80px rgba(255,107,43,.28); }
+  #close .cmd span.p { color: #ff6b2b; }
+  #close .url { font-size: 28px; letter-spacing: .24em; color: #a8a49b; text-transform: uppercase; }
+</style>
+</head>
+<body>
+<div id="root" data-composition-id="main" data-start="0" data-duration="24" data-width="1920" data-height="1080">
+
+  <div class="stage"></div>
+
+  <!-- SURFACE 1: terminal -->
+  <div class="slot" id="slot1"><div class="surf s-term" id="s1">
+    <div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span style="margin-left:18px">~/work</span></div>
+    <div class="body mono"><div class="dim">ready.</div><div><span class="ok">$</span> <span class="typed"></span><span class="caret"></span></div></div>
+  </div></div>
+
+  <!-- SURFACE 2: chat -->
+  <div class="slot" id="slot2"><div class="surf s-chat" id="s2">
+    <div class="head"><span class="av"></span>assistant</div>
+    <div class="msgs"><div class="bub">What should we add today?</div></div>
+    <div class="inp mono"><span class="typed"></span><span class="caret"></span><span class="send">&#8593;</span></div>
+  </div></div>
+
+  <!-- SURFACE 3: command palette -->
+  <div class="slot" id="slot3"><div class="surf s-pal" id="s3"><div class="box">
+    <div class="q mono"><span class="mag"></span><span><span class="typed"></span><span class="caret"></span></span></div>
+    <div class="row hot"><i></i>Run as shell command</div>
+    <div class="row"><i></i>Recent files</div>
+    <div class="row"><i></i>Open settings</div>
+  </div></div></div>
+
+  <!-- SURFACE 4: editor cell -->
+  <div class="slot" id="slot4"><div class="surf s-ed" id="s4">
+    <div class="tree mono">src<br>&nbsp;&nbsp;app.ts<br>&nbsp;&nbsp;notes.md<br>scripts<br>&nbsp;&nbsp;setup.sh<br>README</div>
+    <div class="main"><div class="tabs mono"><div class="tab">setup.sh</div></div>
+      <div class="code mono">
+        <div># one line adds the skill</div>
+        <div class="cell"><small>CELL 1</small><span class="typed"></span><span class="caret"></span></div>
+      </div></div>
+  </div></div>
+
+  <div class="label mono" id="label"></div>
+  <div class="kbd mono" id="kbd">ENTER</div>
+
+  <!-- REEL -->
+  <div id="reel"><div id="cuts"></div>
+    <div class="pillbar mono"><b>$</b> <span id="pilltxt"></span></div>
+    <div class="tick mono" id="tick"></div>
+    <div class="flash" id="flash2"></div>
+  </div>
+
+  <!-- CLOSE -->
+  <div id="close"><div class="col">
+    <img class="logo" id="logo" src="" alt="">
+    <h1 id="brand"></h1>
+    <div class="tag" id="tagline"></div>
+    <div class="cmd mono" id="cmd"><span class="p">$</span> <span id="cmdtyped"></span><span class="caret"></span></div>
+    <div class="url mono" id="url"></div>
+  </div></div>
+
+  <div class="flash" id="flash"></div>
+
+<script>
+/* ---------- CONFIG: everything project-specific lives here ---------- */
+const CONFIG = {
+  prompt: "npx your-tool run --demo",
+  bpm: 120,                 // tempo grid; ignored for the reel when `cuts` is set
+  surfaceBeats: 5,          // beats per surface (type, hold, exit)
+  surfaces: ["s1", "s2", "s3", "s4"],
+  surfaceNames: ["terminal", "chat", "palette", "editor"],
+  reelPattern: [[8, 1], [16, 0.5]],   // [number of cuts, beats per cut]
+  cuts: null,               // with music: array of absolute cut times from `hyperframes beats`
+  reel: [
+    // 24 file names inside reelDir: real outputs, screenshots, stills of your product, alternating light/dark
+    "out-01.png","out-02.png","out-03.png","out-04.png","out-05.png","out-06.png","out-07.png","out-08.png",
+    "out-09.png","out-10.png","out-11.png","out-12.png","out-13.png","out-14.png","out-15.png","out-16.png",
+    "out-17.png","out-18.png","out-19.png","out-20.png","out-21.png","out-22.png","out-23.png","out-24.png"
+  ],
+  reelDir: "assets/reel/",
+  brand: "Your Product",
+  tagline: "One line that says what it does.",
+  url: "example.com",
+  logo: ""   // set to "" for a text-only close
+};
+
+/* ---------- derived timing ---------- */
+const B = 60 / CONFIG.bpm;
+const SD = CONFIG.surfaceBeats * B;
+const REEL_START = CONFIG.surfaces.length * SD;
+let cutTimes;
+if (CONFIG.cuts) { cutTimes = CONFIG.cuts.slice(); }
+else {
+  cutTimes = []; let t = REEL_START;
+  for (const [n, beats] of CONFIG.reelPattern) for (let i = 0; i < n; i++) { cutTimes.push(t); t += beats * B; }
+  cutTimes.push(t);          // end of the last cut == start of close
+}
+const CLOSE_START = cutTimes[cutTimes.length - 1];
+const nCuts = cutTimes.length - 1;
+
+/* ---------- build reel DOM ---------- */
+const cutsEl = document.getElementById("cuts");
+for (let i = 0; i < nCuts; i++) {
+  const d = document.createElement("div"); d.className = "cut"; d.setAttribute("data-layout-allow-overflow",""); d.id = "cut" + i;
+  const im = document.createElement("img"); im.src = CONFIG.reelDir + CONFIG.reel[i % CONFIG.reel.length];
+  d.appendChild(im); cutsEl.appendChild(d);
+}
+document.getElementById("pilltxt").textContent = CONFIG.prompt;
+document.getElementById("brand").textContent = CONFIG.brand;
+document.getElementById("tagline").textContent = CONFIG.tagline;
+document.getElementById("url").textContent = CONFIG.url;
+if (CONFIG.logo) document.getElementById("logo").src = CONFIG.logo; else document.getElementById("logo").remove();
+
+/* ---------- timeline ---------- */
+const tl = gsap.timeline({ paused: true });
+const L = CONFIG.prompt.length;
+const typeInto = (sel, start, dur) => {
+  const el = document.querySelector(sel); const o = { n: 0 };
+  tl.to(o, { n: L, duration: dur, ease: "none", onUpdate: () => { el.textContent = CONFIG.prompt.slice(0, Math.round(o.n)); } }, start);
+};
+// caret blinks are tied to time so they stay seekable
+const blink = (sel, start, end) => { for (let t = start; t < end; t += 0.5) tl.set(sel, { opacity: ((t - start) / 0.5) % 2 === 0 ? 1 : 0 }, t); };
+
+tl.set("#reel", { opacity: 0 }, 0);
+CONFIG.surfaces.forEach((id, i) => {
+  const s0 = i * SD, slot = "#slot" + (i + 1), el = "#" + id;
+  tl.set(slot, { opacity: 1 }, s0);
+  tl.fromTo(el, { x: 260, opacity: 0, scale: 0.96 }, { x: 0, opacity: 1, scale: 1, duration: B * 0.7, ease: "power3.out" }, s0);
+  const typeStart = s0 + B * 0.9, typeDur = SD - B * 2.4;
+  typeInto(el + " .typed", typeStart, typeDur);
+  blink(el + " .caret", s0, s0 + SD);
+  // label
+  tl.fromTo("#label", { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.25 }, s0 + 0.1);
+  tl.call(() => { document.getElementById("label").innerHTML = "same prompt &middot; <b>" + CONFIG.surfaceNames[i] + "</b> &middot; " + (i + 1) + "/" + CONFIG.surfaces.length; }, null, s0 + 0.1);
+  // enter key press on the beat before exit
+  const press = s0 + SD - B * 1.2;
+  tl.fromTo("#kbd", { opacity: 0, scale: 0.8 }, { opacity: 1, scale: 1, duration: 0.12, ease: "back.out(3)" }, press);
+  tl.to("#kbd", { opacity: 0, duration: 0.15 }, press + B * 0.6);
+  // exit
+  tl.to(el, { x: -260, opacity: 0, duration: B * 0.5, ease: "power3.in" }, s0 + SD - B * 0.5);
+  tl.set(slot, { opacity: 0 }, s0 + SD);
+});
+tl.to("#label", { opacity: 0, duration: 0.1 }, REEL_START - 0.3);
+
+// hard cut into the reel with a one-beat-grid flash
+tl.set("#reel", { opacity: 1 }, REEL_START);
+tl.fromTo("#flash", { opacity: 0.9 }, { opacity: 0, duration: 0.2, ease: "power2.out", immediateRender: false }, REEL_START);
+for (let i = 0; i < nCuts; i++) {
+  const a = cutTimes[i], b = cutTimes[i + 1], id = "#cut" + i;
+  tl.set(id, { opacity: 1 }, a);
+  tl.fromTo(id + " img", { scale: 1.0 }, { scale: 1.07, duration: b - a, ease: "none" }, a);
+  tl.set(id, { opacity: 0 }, b);
+  tl.call(() => { document.getElementById("tick").textContent = String(i + 1).padStart(2, "0") + " / " + String(nCuts).padStart(2, "0"); }, null, a);
+}
+tl.set("#reel", { opacity: 0 }, CLOSE_START);
+
+// close
+const C = CLOSE_START;
+tl.set("#close", { opacity: 1 }, C);
+if (CONFIG.logo) tl.fromTo("#logo", { scale: 0.7, opacity: 0 }, { scale: 1, opacity: 1, duration: B, ease: "back.out(2)" }, C);
+tl.fromTo("#brand", { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: B, ease: "power3.out" }, C + B * 0.5);
+tl.fromTo("#tagline", { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: B, ease: "power3.out" }, C + B);
+tl.fromTo("#cmd", { y: 40, opacity: 0 }, { y: 0, opacity: 1, duration: B, ease: "power3.out" }, C + B * 2);
+typeInto_close();
+function typeInto_close() {
+  const el = document.getElementById("cmdtyped"); const o = { n: 0 };
+  tl.to(o, { n: L, duration: B * 3, ease: "none", onUpdate: () => { el.textContent = CONFIG.prompt.slice(0, Math.round(o.n)); } }, C + B * 2.5);
+}
+tl.fromTo("#url", { opacity: 0 }, { opacity: 1, duration: B }, C + B * 6);
+tl.to("#cmd", { boxShadow: "0 0 140px rgba(255,107,43,.55)", duration: B, yoyo: true, repeat: 1, ease: "sine.inOut" }, C + B * 6.5);
+
+window.__timelines["main"] = tl;
+</script>
+</div>
+</body>
+</html>

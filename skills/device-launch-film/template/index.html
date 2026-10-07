@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=1920, height=1080" />
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{width:1920px;height:1080px;overflow:hidden;background:#070708}
+  #root{position:relative;width:100%;height:100%;overflow:hidden;font-family:system-ui,-apple-system,sans-serif;
+    background:radial-gradient(ellipse 60% 55% at 50% 48%,#1b1b20 0%,#0c0c0e 60%,#060607 100%)}
+  #glow{position:absolute;left:360px;top:200px;width:1200px;height:700px;border-radius:50%;
+    background:radial-gradient(ellipse at center,rgba(255,107,43,.14),rgba(255,107,43,0) 65%);filter:blur(30px)}
+  #drift,#cam{position:absolute;left:0;top:0;width:1920px;height:1080px;transform-origin:0 0}
+  #drift{transform-origin:960px 540px}
+  #floor{position:absolute;left:260px;top:846px;width:1400px;height:90px;border-radius:50%;
+    background:radial-gradient(ellipse at center,rgba(0,0,0,.65),rgba(0,0,0,0) 70%)}
+  #lid{position:absolute;left:382px;top:92px;width:1156px;height:736px;background:#161619;border:2px solid #34343a;
+    border-radius:26px 26px 8px 8px;box-shadow:0 40px 90px rgba(0,0,0,.7),inset 0 0 0 1px #0b0b0d}
+  #cam-dot{position:absolute;left:950px;top:100px;width:8px;height:8px;border-radius:50%;background:#2b2b31;box-shadow:inset 0 0 2px #000}
+  #base{position:absolute;left:300px;top:828px;width:1320px;height:22px;border-radius:0 0 26px 26px;
+    background:linear-gradient(#cfcfd4,#8d8d94 55%,#5d5d63)}
+  #notch{position:absolute;left:560px;top:0;width:200px;height:9px;border-radius:0 0 12px 12px;background:linear-gradient(#6a6a70,#9a9aa0)}
+  #screen{position:absolute;left:400px;top:110px;width:1120px;height:700px;overflow:hidden;background:#faf9f6;border-radius:8px}
+  #scroller{position:absolute;left:0;top:0;width:1120px;height:1129px}
+  #page{position:absolute;left:0;top:0;width:1920px;height:1936px;transform:scale(.58333);transform-origin:0 0;
+    background:url(assets/page.png) 0 0/1920px 1936px no-repeat}
+  #patch{position:absolute;left:446px;top:548px;width:620px;height:36px;background:#f5f4f1}
+  #ring{position:absolute;left:399px;top:537px;width:1118px;height:57px;border-radius:14px;border:2px solid #ff6b2b;
+    box-shadow:0 0 0 6px rgba(255,107,43,.16);opacity:0}
+  #typed{position:absolute;left:454px;top:548px;height:36px;line-height:36px;font-size:19px;color:#1c1b19;white-space:pre;letter-spacing:-.005em}
+  #caret{display:inline-block;width:2px;height:22px;background:#ff6b2b;vertical-align:middle;margin-left:1px;opacity:0}
+  #cover{position:absolute;left:0;top:604px;width:1920px;height:1332px;background:#faf9f6;opacity:0}
+  #hit{position:absolute;left:398px;top:846px;width:364px;height:196px;opacity:0;border-radius:16px;
+    background:url(assets/page.png) -398px -846px/1920px 1936px no-repeat;box-shadow:0 14px 40px rgba(28,27,25,.14)}
+  #end{position:absolute;inset:0;background:#0a0a0b;opacity:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:26px;color:#f5f1ea}
+  #end .glow{position:absolute;left:560px;top:260px;width:800px;height:560px;background:radial-gradient(ellipse,rgba(255,107,43,.2),rgba(255,107,43,0) 65%);filter:blur(20px)}
+  #end img{position:relative;width:200px;height:200px}
+  #end h1{position:relative;font-size:112px;font-weight:700;letter-spacing:-.045em}
+  #end p{position:relative;font-size:34px;color:#a8a49b;letter-spacing:-.01em}
+  #end .url{position:relative;margin-top:10px;font:600 28px ui-monospace,Menlo,monospace;color:#ff6b2b;letter-spacing:.02em}
+</style>
+</head>
+<body>
+<div id="root" data-composition-id="main" data-start="0" data-duration="18" data-width="1920" data-height="1080">
+  <div id="glow"></div>
+  <div id="drift">
+    <div id="cam">
+      <div id="floor"></div>
+      <div id="lid"><div id="cam-dot"></div></div>
+      <div id="screen">
+        <div id="scroller">
+          <div id="page">
+            <div id="patch"></div><div id="ring"></div>
+            <div id="typed"><span id="txt"></span><span id="caret"></span></div>
+            <div id="cover"></div><div id="hit"></div>
+          </div>
+        </div>
+      </div>
+      <div id="base"><div id="notch"></div></div>
+    </div>
+  </div>
+  <div id="end">
+    <div class="glow"></div>
+    <img id="logo" src="assets/logo.png" />
+    <h1 id="word">Skills Dojo</h1>
+    <p id="tag">Build, share, and adopt AI skills across your team.</p>
+    <div class="url" id="url">skillsdojo.com</div>
+  </div>
+</div>
+<script>
+  // ---- CONFIG: everything product-specific lives here ----
+  const CFG = {
+    typed: "humanizer",
+    scale: 1120 / 1920,          // screen width / page width
+    maxScroll: 429,              // page height * scale - screen height
+    focus: { x: 750, y: 440 },   // stage point (px) of the search field after scroll returns to 0
+    zoom: 3
+  };
+  const tl = gsap.timeline({ paused: true });
+  const $ = (s) => document.querySelector(s);
+
+  // 0-1.6 device rises, screen wakes
+  tl.fromTo("#cam", { y: 70, opacity: 0 }, { y: 0, opacity: 1, duration: 1.4, ease: "power3.out" }, 0);
+  tl.fromTo("#screen", { filter: "brightness(0.15)" }, { filter: "brightness(1)", duration: 0.9, ease: "power2.out" }, 0.9);
+  // slow push-in across the first half
+  tl.fromTo("#drift", { scale: 1 }, { scale: 1.035, duration: 6.0, ease: "none" }, 0.6);
+
+  // 1.6-5.6 scroll the page, then return to top
+  tl.fromTo("#scroller", { y: 0 }, { y: -CFG.maxScroll, duration: 3.6, ease: "power2.inOut" }, 1.7);
+  tl.to("#scroller", { y: 0, duration: 1.5, ease: "power3.inOut" }, 5.6);
+  tl.to("#drift", { scale: 1, duration: 1.2, ease: "power2.inOut" }, 6.6);
+
+  // 7.0-8.3 zoom into the interface
+  const k = CFG.zoom, f = CFG.focus;
+  tl.to("#cam", { x: 960 - k * f.x, y: 540 - k * f.y, scale: k, duration: 1.3, ease: "expo.inOut" }, 7.0);
+  tl.to("#ring", { opacity: 1, duration: 0.3 }, 8.4);
+
+  // 8.7-10.5 type
+  const prog = { n: 0 };
+  tl.set("#caret", { opacity: 1 }, 8.6);
+  tl.to(prog, { n: CFG.typed.length, duration: 1.7, ease: "none", onUpdate() {
+    $("#txt").textContent = CFG.typed.slice(0, Math.round(prog.n));
+  } }, 8.8);
+
+  // 10.8-12.4 result: everything else clears, the match rises into place
+  tl.to("#cover", { opacity: 1, duration: 0.5, ease: "power2.out" }, 10.9);
+  tl.fromTo("#hit", { opacity: 0, y: 0 }, { opacity: 1, y: -200, duration: 0.9, ease: "power3.out" }, 11.3);
+  tl.set("#caret", { opacity: 0 }, 11.1);
+
+  // 12.6-13.6 pull back out; 13.4-14.4 hand over to the lockup
+  tl.to("#cam", { x: 0, y: 0, scale: 1, duration: 1.1, ease: "power3.inOut" }, 12.7);
+  tl.to("#drift", { opacity: 0, scale: 0.94, duration: 0.8, ease: "power2.in" }, 13.7);
+  tl.to("#glow", { opacity: 0, duration: 0.6 }, 13.7);
+  tl.to("#end", { opacity: 1, duration: 0.7, ease: "power2.out" }, 13.9);
+  tl.fromTo("#logo", { scale: 0.7, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.9, ease: "back.out(1.6)" }, 14.2);
+  tl.fromTo("#word", { y: 24, opacity: 0 }, { y: 0, opacity: 1, duration: 0.7, ease: "power3.out" }, 14.6);
+  tl.fromTo("#tag", { y: 16, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6, ease: "power3.out" }, 15.0);
+  tl.fromTo("#url", { opacity: 0 }, { opacity: 1, duration: 0.6 }, 15.5);
+
+  window.__timelines["main"] = tl;
+</script>
+</body>
+</html>

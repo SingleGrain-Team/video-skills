@@ -1,0 +1,21 @@
+Single Grain Video Skills
+Copyright 2026 Single Grain
+
+This repository contains agent skills authored by Single Grain.
+
+Portions of the composition structure, scene timing and motion techniques in
+some skills are derived from HyperFrames Launches
+(https://github.com/heygen-com/hyperframes-launches), licensed under the
+Apache License, Version 2.0:
+
+  HyperFrames Launches
+  Copyright 2026 HeyGen, Inc.
+
+Each derived skill names its upstream project in its README.md. HeyGen's
+bundled media, brand assets and fonts are NOT included in this repository.
+
+Third-party software bundled in skill templates:
+
+  GSAP (skills/one-prompt-reel/template/assets/gsap.min.js)
+  Copyright GreenSock. Subject to the GSAP Standard License,
+  https://gsap.com/standard-license
